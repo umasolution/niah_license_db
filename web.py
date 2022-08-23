@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import email
 import os.path
 import time
 from os import path
@@ -268,15 +269,13 @@ def getSubProfile():
             modules = pDB[3]
             description = pDB[4]
 
-            res = {}
-            res['subscription_name'] = subscription_name
-            res['scans'] = scans
-            res['users'] = users
-            res['modules'] = modules.split(",")
-            res['description'] = description
-            results.append(res)
+            modules['scans'] = scans
+            modules['users'] = users
+            modules['subscription_name'] = subscription_name
+            modules['description'] = description
+            results.append(modules)
 
-    return jsonify(results)
+        return jsonify(results)
 
 # API to get subscription data.
 @app.route('/api/data/subscription', methods = ['GET'])
@@ -338,6 +337,72 @@ def getdataSubscription():
 
         return jsonify(results)
 
+
+@app.route('/api/get/subscription', methods = ['POST'])
+def getSubscription():
+    if request.method == 'POST':
+        req_data = request.get_json()        
+        code = req_data['code']
+        emailid = req_data['emailid']
+
+        query = "select subscription, firstname, lastname, companyname, address, city, state, pincode, country, phone, status from subscription_db where emailid='%s' and code='%s'" % (emailid, code)
+        g.cursor.execute(query)
+        subscribeDB = g.cursor.fetchall();
+
+        if len(subscribeDB) > 0:
+            subscription = subscribeDB[0][0]
+            firstname = subscribeDB[0][1]
+            lastname = subscribeDB[0][2]
+            companyname = subscribeDB[0][3]
+            address = subscribeDB[0][4]
+            city = subscribeDB[0][5]
+            state = subscribeDB[0][6]
+            pincode = subscribeDB[0][7]
+            country = subscribeDB[0][8]
+            phone = subscribeDB[0][9]
+            status = subscribeDB[0][10]
+
+            res = {}
+            res['subscription'] = subscription
+            res['firstname'] = firstname
+            res['lastname'] = lastname
+            res['companyname'] = companyname
+            res['address'] = address
+            res['city'] = city
+            res['state'] = state
+            res['pincode'] = pincode
+            res['country'] = country
+            res['phone'] = phone
+            res['status'] = status
+        
+            return jsonify(res)
+
+
+def check_license(email_id):
+    query = "select status, code, subscription from license_master_db where emailid='%s'" % email_id
+    g.cursor.execute(query)
+    subscribeDB = g.cursor.fetchall();
+
+    if len(subscribeDB) > 0:
+        status = subscribeDB[0][0]
+        code = subscribeDB[0][1]
+        subscription = subscribeDB[0][2]
+
+        if status == "active":
+            res = {}
+            res['status'] = status
+            res['code'] = code
+            res['subscription'] = subscription
+            return res
+        else:
+            res = {}
+            res['status'] = status
+            res['code'] = code
+            res['subscription'] = subscription
+            return res
+    else:
+        return False
+
 # API to subscribe user in niah service.
 @app.route('/api/subscription/register', methods = ['POST', 'GET'])
 def regSubscription():
@@ -355,173 +420,214 @@ def regSubscription():
         emailid = req_data['emailid']
         address = req_data['address']
 
-        amount = req_data['amount']
-        cardnumber = req_data['cardnumber']
-        expiredate = req_data['expiredate']
-        cardcodeno = req_data['cardcodeno']
         subscription = req_data['subscription']
-        users = req_data['users']
-        scans = req_data['scans']
 
-        todays_date = date.today()
-        yearno = todays_date.year
+        if subscription == "Free":
+            res_sub = check_license(emailid)
+            
+            if res_sub:
+                res = {}
+                res['code'] = res_sub['code']
+                res['subscription'] =  res_sub['subscription']
+                if res_sub['status'] == "active":
+                    res['status'] = 1
+                    res['message'] = "Subscription found activated"
+                else:
+                    res['status'] = 0
+                    res['message'] = "Subscription Found deactivated"
+            else:
+                query = "insert into license_master_db(subscription, firstname, lastname, companyname, address, city, state, pincode, country, emailid, phone, code, status) values('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', 'active');" % (subscription, firstname, lastname, companyname, address, city, state, pincode, country, emailid, phone, code)
+                print(query)
+                g.cursor.execute(query)
+                g.conn.commit()
 
-        inv_details = getInvoice()
-        inv_no = inv_details['inv_no'] + 1
-        inv_name = "%s-%s" % (yearno, inv_no)
+                res = {}
+                res['status'] = 1
+                res['code'] = code
+                res['subscription'] = subscription
+                res['message'] = "Free Subscription Successfully Activated"
+        else:
+            amount = req_data['amount']
+            cardnumber = req_data['cardnumber']
+            expiredate = req_data['expiredate']
+            
+            exp_year = ''
+            exp_month = ''
 
-        # Create a merchantAuthenticationType object with authentication details
-        # retrieved from the constants file
-        merchantAuth = apicontractsv1.merchantAuthenticationType()
-        merchantAuth.name = '752nCEHRj5'
-        merchantAuth.transactionKey = '926sp4uzACA2UL4h'
-        # Create the payment data for a credit card
-        creditCard = apicontractsv1.creditCardType()
-        creditCard.cardNumber = '%s' % cardnumber
-        creditCard.expirationDate = '%s' % expiredate
-        creditCard.cardCode = "%s" % cardcodeno
-        # Add the payment data to a paymentType object
-        payment = apicontractsv1.paymentType()
-        payment.creditCard = creditCard
+            if re.findall(r'(\d+)-', str(expiredate)):
+                exp_year = re.findall(r'(\d+)-', str(expiredate))[0]
+            if re.findall(r'-(\d+)', str(expiredate)):
+                exp_month = re.findall(r'-(\d+)', str(expiredate))[0]
 
-        # Create order information
-        order = apicontractsv1.orderType()
-        order.invoiceNumber = '%s' % inv_name
-        order.description = '%s subscription payment' % subscription
+            if exp_month and exp_year:
+                expiredate = "%s%s" % (exp_month, exp_year)
 
-        # Set the customer's Bill To address
-        customerAddress = apicontractsv1.customerAddressType()
-        customerAddress.firstName = "%s" % firstname
-        customerAddress.lastName = "%s" % lastname
-        customerAddress.company = "%s" % companyname
-        customerAddress.address = "%s" % address
-        customerAddress.city = "%s" % city
-        customerAddress.state = "%s" % state
-        customerAddress.zip = "%s" % pincode
-        customerAddress.country = "%s" % country
+            cardcodeno = req_data['cardcodeno']
+            subscription = req_data['subscription']
 
-        # Set the customer's identifying information
-        customerData = apicontractsv1.customerDataType()
-        customerData.type = "individual"
-        customerData.id = "%sU%sS%s" % (subscription, users, scans)
-        customerData.email = "%s" % emailid
+            todays_date = date.today()
+            yearno = todays_date.year
 
-        # Add values for transaction settings
-        duplicateWindowSetting = apicontractsv1.settingType()
-        duplicateWindowSetting.settingName = "duplicateWindow"
-        duplicateWindowSetting.settingValue = "600"
-        settings = apicontractsv1.ArrayOfSetting()
-        settings.setting.append(duplicateWindowSetting)
+            inv_details = getInvoice()
+            inv_no = inv_details['inv_no'] + 1
+            inv_name = "%s-%s" % (yearno, inv_no)
 
-        # setup individual line items
-        line_item_1 = apicontractsv1.lineItemType()
-        line_item_1.itemId = "%sU%sS%s" % (subscription, users, scans)
-        line_item_1.name = "%s" % subscription
-        line_item_1.description = "%s subscription with %s users and %s scans" % (subscription, users, scans)
-        line_item_1.quantity = "1"
-        line_item_1.unitPrice = amount
+            # Create a merchantAuthenticationType object with authentication details
+            # retrieved from the constants file
+            merchantAuth = apicontractsv1.merchantAuthenticationType()
+            merchantAuth.name = '752nCEHRj5'
+            merchantAuth.transactionKey = '926sp4uzACA2UL4h'
+            # Create the payment data for a credit card
+            creditCard = apicontractsv1.creditCardType()
+            creditCard.cardNumber = '%s' % cardnumber
+            creditCard.expirationDate = '%s' % expiredate
+            creditCard.cardCode = "%s" % cardcodeno
+            # Add the payment data to a paymentType object
+            payment = apicontractsv1.paymentType()
+            payment.creditCard = creditCard
 
-        # build the array of line items
-        line_items = apicontractsv1.ArrayOfLineItem()
-        line_items.lineItem.append(line_item_1)
+            # Create order information
+            order = apicontractsv1.orderType()
+            order.invoiceNumber = '%s' % inv_name
+            order.description = '%s subscription payment' % subscription
 
-        # Create a transactionRequestType object and add the previous objects to it.
-        transactionrequest = apicontractsv1.transactionRequestType()
-        transactionrequest.transactionType = "authCaptureTransaction"
-        transactionrequest.amount = amount
-        transactionrequest.payment = payment
-        transactionrequest.order = order
-        transactionrequest.billTo = customerAddress
-        transactionrequest.customer = customerData
-        transactionrequest.transactionSettings = settings
-        transactionrequest.lineItems = line_items
+            # Set the customer's Bill To address
+            customerAddress = apicontractsv1.customerAddressType()
+            customerAddress.firstName = "%s" % firstname
+            customerAddress.lastName = "%s" % lastname
+            customerAddress.company = "%s" % companyname
+            customerAddress.address = "%s" % address
+            customerAddress.city = "%s" % city
+            customerAddress.state = "%s" % state
+            customerAddress.zip = "%s" % pincode
+            customerAddress.country = "%s" % country
 
-        # Assemble the complete transaction request
-        createtransactionrequest = apicontractsv1.createTransactionRequest()
-        createtransactionrequest.merchantAuthentication = merchantAuth
-        createtransactionrequest.refId = "MerchantID-0001"
-        createtransactionrequest.transactionRequest = transactionrequest
-        # Create the controller
-        createtransactioncontroller = createTransactionController(
-            createtransactionrequest)
-        createtransactioncontroller.execute()
+            # Set the customer's identifying information
+            customerData = apicontractsv1.customerDataType()
+            customerData.type = "individual"
+            customerData.id = "%sC%s" % (subscription, code)
+            customerData.email = "%s" % emailid
 
-        response = createtransactioncontroller.getresponse()
+            # Add values for transaction settings
+            duplicateWindowSetting = apicontractsv1.settingType()
+            duplicateWindowSetting.settingName = "duplicateWindow"
+            duplicateWindowSetting.settingValue = "600"
+            settings = apicontractsv1.ArrayOfSetting()
+            settings.setting.append(duplicateWindowSetting)
 
-        if response is not None:
-            # Check to see if the API request was successfully received and acted upon
-            if response.messages.resultCode == "Ok":
-                # Since the API request was successful, look for a transaction response
-                # and parse it to display the results of authorizing the card
-                if hasattr(response.transactionResponse, 'messages') is True:
-                    print(
-                        'Successfully created transaction with Transaction ID: %s'
-                        % response.transactionResponse.transId)
-                    print('Transaction Response Code: %s' %
-                        response.transactionResponse.responseCode)
-                    print('Message Code: %s' %
-                        response.transactionResponse.messages.message[0].code)
-                    print('Description: %s' % response.transactionResponse.
-                        messages.message[0].description)
+            # setup individual line items
+            line_item_1 = apicontractsv1.lineItemType()
+            line_item_1.itemId = "%sC%s" % (subscription, code)
+            line_item_1.name = "%s" % subscription
+            line_item_1.description = "%s subscription with %s code" % (subscription, code)
+            line_item_1.quantity = "1"
+            line_item_1.unitPrice = amount
 
-                    company_id = uuid.uuid1()
-                    team_id = uuid.uuid1()
-                    team_name = 'default'
+            # build the array of line items
+            line_items = apicontractsv1.ArrayOfLineItem()
+            line_items.lineItem.append(line_item_1)
 
-                    # Create Users
-                    query = "insert into invoice_tab(inv_no, name, yearno, amount, subscription, firstname, lastname, companyname, address, city, state, pincode, country, emailid, users, scans) values('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');" % (inv_no, inv_name, yearno, amount, subscription, firstname, lastname, companyname, address, city, state, pincode, country, emailid, users, scans)
-                    print(query)
-                    g.cursor.execute(query)
-                    g.conn.commit()
+            # Create a transactionRequestType object and add the previous objects to it.
+            transactionrequest = apicontractsv1.transactionRequestType()
+            transactionrequest.transactionType = "authCaptureTransaction"
+            transactionrequest.amount = amount
+            transactionrequest.payment = payment
+            transactionrequest.order = order
+            transactionrequest.billTo = customerAddress
+            transactionrequest.customer = customerData
+            transactionrequest.transactionSettings = settings
+            transactionrequest.lineItems = line_items
 
-                    query = "insert into license_master_db(subscription, firstname, lastname, companyname, address, city, state, pincode, country, emailid, users, scans, phone, code, status) values('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', 'active');" % (subscription, firstname, lastname, companyname, address, city, state, pincode, country, emailid, users, scans, phone, code)
-                    print(query)
-                    g.cursor.execute(query)
-                    g.conn.commit()
+            # Assemble the complete transaction request
+            createtransactionrequest = apicontractsv1.createTransactionRequest()
+            createtransactionrequest.merchantAuthentication = merchantAuth
+            createtransactionrequest.refId = "MerchantID-0001"
+            createtransactionrequest.transactionRequest = transactionrequest
+            # Create the controller
+            createtransactioncontroller = createTransactionController(
+                createtransactionrequest)
+            createtransactioncontroller.execute()
 
-                    res = {}
-                    res['status'] = True
-                    res['code'] = code
-                    res['message'] = "Transaction Successfully Completed"
+            response = createtransactioncontroller.getresponse()
+
+            if response is not None:
+                # Check to see if the API request was successfully received and acted upon
+                if response.messages.resultCode == "Ok":
+                    # Since the API request was successful, look for a transaction response
+                    # and parse it to display the results of authorizing the card
+                    if hasattr(response.transactionResponse, 'messages') is True:
+                        print(
+                            'Successfully created transaction with Transaction ID: %s'
+                            % response.transactionResponse.transId)
+                        print('Transaction Response Code: %s' %
+                            response.transactionResponse.responseCode)
+                        print('Message Code: %s' %
+                            response.transactionResponse.messages.message[0].code)
+                        print('Description: %s' % response.transactionResponse.
+                            messages.message[0].description)
+
+                        # Create Users
+                        query = "insert into invoice_tab(inv_no, name, yearno, amount, subscription, firstname, lastname, companyname, address, city, state, pincode, country, emailid, users, scans) values('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');" % (inv_no, inv_name, yearno, amount, subscription, firstname, lastname, companyname, address, city, state, pincode, country, emailid, '0', '0')
+                        print(query)
+                        g.cursor.execute(query)
+                        g.conn.commit()
+
+                        res_sub = check_license(emailid)
+                        if res_sub:
+                            query = "update license_master_db set subscription='%s', code='%s', status='active' where emailid='%s'" % (subscription, code, emailid) 
+                            print(query)
+                            g.cursor.execute(query)
+                            g.conn.commit()
+                        else:
+                            query = "insert into license_master_db(subscription, firstname, lastname, companyname, address, city, state, pincode, country, emailid, phone, code, status) values('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', 'active');" % (subscription, firstname, lastname, companyname, address, city, state, pincode, country, emailid, phone, code)
+                            print(query)
+                            g.cursor.execute(query)
+                            g.conn.commit()
+
+                        res = {}
+                        res['status'] = 1
+                        res['code'] = code
+                        res['subscription'] = subscription
+                        res['message'] = "Transaction Successfully Completed"
+                    else:
+                        print('Failed Transaction.')
+                        if hasattr(response.transactionResponse, 'errors') is True:
+                            print('Error Code:  %s' % str(response.transactionResponse.
+                                                        errors.error[0].errorCode))
+                            print(
+                                'Error message: %s' %
+                                response.transactionResponse.errors.error[0].errorText)
+
+                        # Response failed transaction
+                        res = {}
+                        res['status'] = 0
+                        res['message'] = "Transaction Failed"
+
+                # Or, print errors if the API request wasn't successful
                 else:
                     print('Failed Transaction.')
-                    if hasattr(response.transactionResponse, 'errors') is True:
-                        print('Error Code:  %s' % str(response.transactionResponse.
-                                                    errors.error[0].errorCode))
-                        print(
-                            'Error message: %s' %
+                    if hasattr(response, 'transactionResponse') is True and hasattr(
+                            response.transactionResponse, 'errors') is True:
+                        print('Error Code: %s' % str(
+                            response.transactionResponse.errors.error[0].errorCode))
+                        print('Error message: %s' %
                             response.transactionResponse.errors.error[0].errorText)
+                    else:
+                        print('Error Code: %s' %
+                            response.messages.message[0]['code'].text)
+                        print('Error message: %s' %
+                            response.messages.message[0]['text'].text)
 
-                    # Response failed transaction
+                    # Response failed transation
                     res = {}
-                    res['status'] = False
+                    res['status'] = 0
                     res['message'] = "Transaction Failed"
 
-            # Or, print errors if the API request wasn't successful
             else:
-                print('Failed Transaction.')
-                if hasattr(response, 'transactionResponse') is True and hasattr(
-                        response.transactionResponse, 'errors') is True:
-                    print('Error Code: %s' % str(
-                        response.transactionResponse.errors.error[0].errorCode))
-                    print('Error message: %s' %
-                        response.transactionResponse.errors.error[0].errorText)
-                else:
-                    print('Error Code: %s' %
-                        response.messages.message[0]['code'].text)
-                    print('Error message: %s' %
-                        response.messages.message[0]['text'].text)
-
-                # Response failed transation
                 res = {}
-                res['status'] = False
-                res['message'] = "Transaction Failed"
-
-        else:
-            res = {}
-            res['status'] = False
-            res['message'] = "No Transaction"
-            print('Null Response.')
+                res['status'] = 0
+                res['message'] = "No Transaction"
+                print('Null Response.')
 
         return jsonify(res)
 
@@ -531,9 +637,11 @@ def updateSubCodeUpdate():
     user_id = get_jwt_identity()
     if request.method == 'POST':
         req_data = request.get_json()
-        email_add = req_data['email_add']
+        email_add = req_data['emailid']
+        code = req_data['code']
+
         
-        query = "select subscription, users, scans, code from license_master_db where emailid='%s'" % email_add
+        query = "select subscription, users, scans, code, status from license_master_db where emailid='%s' and code='%s'" % (email_add, code)
         g.cursor.execute(query)
         fetchData = g.cursor.fetchall()
         
@@ -541,12 +649,14 @@ def updateSubCodeUpdate():
         users = fetchData[0][1]
         scans = fetchData[0][2]
         code = fetchData[0][3]
+        status = fetchData[0][4]
 
         res = {}
         res['subscription'] = subscription
         res['users'] = users
         res['scans'] = scans
         res['code'] = code
+        res['status'] = status
 
         return jsonify(res)
 
