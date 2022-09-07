@@ -1990,12 +1990,12 @@ def cveSearchAuth():
                         results = json.load(f)
                 else:
                     results = {}
-                    retRes['Products'] = {}
-                    retRes['microsoft_advisory'] = {}
-                    retRes['platform_advisory'] = {}
-                    retRes['library_advisory'] = {}
-                    retRes['plugin_advisory'] = {}
-                    retRes['application_advisory'] = {}
+                    results['Products'] = {}
+                    results['microsoft_advisory'] = {}
+                    results['platform_advisory'] = {}
+                    results['library_advisory'] = {}
+                    results['plugin_advisory'] = {}
+                    results['application_advisory'] = {}
                 
                 retRes = results
 
