@@ -44,10 +44,10 @@ export PGPASSWORD='versa123'&&psql niahdb versa -c "INSERT INTO pricing_tab(id, 
 export PGPASSWORD='versa123'&&psql niahdb versa -c "INSERT INTO pricing_tab(id, type, number, amount) values('4', 'subscription', '2', '2000');"
 
 # Subscription Table
-export PGPASSWORD='versa123'&&psql niahdb versa -c "INSERT INTO subscription_db(id, subscription_name, scans, users, modules, description) values('1', 'NiahLite', '3', '10', 'dependencies', 'Only for developers');"
-export PGPASSWORD='versa123'&&psql niahdb versa -c "INSERT INTO subscription_db(id, subscription_name, scans, users, modules, description) values('2', 'NiahEnterprise', '10', '100', 'dependencies,applications,vulnalerts,reporting,platforms', 'Only for Enterprise');"
-export PGPASSWORD='versa123'&&psql niahdb versa -c "INSERT INTO subscription_db(id, subscription_name, scans, users, modules, description) values('3', 'NiahFlexi', '0', '0', 'dependencies,applications,vulnalerts,reporting,platforms', 'Custom Users');"
-export PGPASSWORD='versa123'&&psql niahdb versa -c "INSERT INTO subscription_db(id, subscription_name, scans, users, modules, description) values('4', 'Free', '100', '1', 'dependencies,applications,vulnalerts,reporting,platforms', 'Free User');"
+export PGPASSWORD='versa123'&&psql niahdb versa -c "INSERT INTO subscription_db(id, subscription_name, scans, users, modules, description) values('1', 'NiahLite', '300', '10', '{"open source security":"yes","container security":"yes","license compliance":"yes","reporting":"yes","alerts":"yes"}', 'Only for developers');"
+export PGPASSWORD='versa123'&&psql niahdb versa -c "INSERT INTO subscription_db(id, subscription_name, scans, users, modules, description) values('2', 'NiahEnterprise', '0', '0', '{"open source security":"yes","container security":"yes","license compliance":"yes","reporting":"yes","alerts":"yes"}', 'Only for Enterprise');"
+export PGPASSWORD='versa123'&&psql niahdb versa -c "INSERT INTO subscription_db(id, subscription_name, scans, users, modules, description) values('3', 'NiahFlexi', '0', '0', '{"open source security":"yes","container security":"yes","license compliance":"yes","reporting":"yes","alerts":"yes"}', 'Custom Users');"
+export PGPASSWORD='versa123'&&psql niahdb versa -c "INSERT INTO subscription_db(id, subscription_name, scans, users, modules, description) values('4', 'Free', '100', '1', '{"open source security":"yes","container security":"yes","license compliance":"yes","reporting":"yes","alerts":"yes"}', 'Free User');"
 
 # Discount Table
 export PGPASSWORD='versa123'&&psql niahdb versa -c "INSERT INTO discount_tab(id, type, numbers, discount, description) values('1', 'users', '100', '10', 'New User disclount');"
