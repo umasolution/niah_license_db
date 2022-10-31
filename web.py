@@ -40,6 +40,7 @@ from flask_httpauth import HTTPBasicAuth
 from flask import make_response
 import psycopg2
 from jsondiff import diff
+from packageParser.pypiParser import pypi_parser
 
 
 mail = Mail()
@@ -134,6 +135,18 @@ def getInvoice():
         res = {}
         res['inv_no'] = 1
         return res
+
+# API to get subscription detail.
+@app.route('/api/advisory/<language>/<packagename>', methods = ['GET'])
+def getadvisory(language, packagename):
+    if request.method == 'GET':
+        if language == "python":
+            res = pypi_parser()
+            results = res.pypi_parser_by_package(packagename)
+            return jsonify(results)
+
+
+
 
 # API to get subscription detail.
 @app.route('/api/get/subscription', methods = ['GET'])
@@ -1549,7 +1562,7 @@ def getPlatform(platform, osname):
         req_data = request.get_json()
 
         if 'email_id' in req_data and 'code' in req_data:
-            email_id = req_data['type']
+            email_id = req_data['email_id']
             code = req_data['code']
         else:
             res = {}
@@ -1576,6 +1589,57 @@ def getPlatform(platform, osname):
             res['error'] = 3
             return jsonify(res)
 
+def getnpm_javascript_mvers(product, version):
+        response = requests.get('https://registry.npmjs.org/%s' % product)
+        data = response.text
+        data = json.loads(data)
+        versionArray = data['versions']
+
+        versions = []
+        for ver in versionArray:
+            versions.append(ver)
+
+        return ' '.join(versions)
+
+@app.route('/api/license/language/<application>', methods = ['POST', 'GET'])
+#@jwt_required
+def getLicense(application):
+    if request.method == 'POST':
+        req_data = request.get_json()
+
+        if 'email_id' in req_data and 'code' in req_data:
+            email_id = req_data['email_id']
+            code = req_data['code']
+        else:
+            res = {}
+            res['error'] = 1
+            return jsonify(res)
+    
+        query = "select status from license_master_db where code='%s' and emailid='%s'" % (code, email_id)
+        print(query)
+        g.cursor.execute(query)
+        status_data = g.cursor.fetchall()
+        
+        license_db = {}
+
+        if len(status_data) > 0:
+            if status_data[0][0] == "active": 
+                if application == "javascript":               
+                    with open("/var/DB/feeds/packages/npm_license.json", "r") as f:
+                        license_db = json.load(f)
+                elif application == "python":               
+                    with open("/var/DB/feeds/packages/pypi_license.json", "r") as f:
+                        license_db = json.load(f)
+                elif application == "php":               
+                    with open("/var/DB/feeds/packages/composer_license.json", "r") as f:
+                        license_db = json.load(f)
+                elif application == "java":               
+                    with open("/var/DB/feeds/packages/maven_license.json", "r") as f:
+                        license_db = json.load(f)
+                else:
+                    license_db = {}
+
+        return jsonify(license_db)        
 
 # API to get specified language (python/php/java/javascript) products feeds. (this API call by niah scanner and celery machine)
 @app.route('/api/scan/language/<application>', methods = ['POST', 'GET'])
@@ -1585,7 +1649,7 @@ def getLanguage(application):
         req_data = request.get_json()
 
         if 'email_id' in req_data and 'code' in req_data:
-            email_id = req_data['type']
+            email_id = req_data['email_id']
             code = req_data['code']
         else:
             res = {}
@@ -1623,7 +1687,7 @@ def getLanguage(application):
                             resRet['vendor'] = d['vendor']
 
                             if application == "javascript":
-                                resRet['available_versions'] = web_helper_obg.getnpm_javascript_mvers(d['product'], d['version'])
+                                resRet['available_versions'] = getnpm_javascript_mvers(d['product'], d['version'])
                             else:
                                 resRet['available_versions'] = ''
 
@@ -1684,7 +1748,7 @@ def getVendorLanguage(application):
         req_data = request.get_json()
 
         if 'email_id' in req_data and 'code' in req_data:
-            email_id = req_data['type']
+            email_id = req_data['email_id']
             code = req_data['code']
         else:
             res = {}
@@ -2931,4 +2995,4 @@ def checkLicense(type):
         return jsonify(res)
 
 if __name__ == "__main__":
-    app.run('0.0.0.0', port=8080, debug=True)
+    app.run('0.0.0.0', port=80, debug=True)
