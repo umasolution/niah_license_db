@@ -1578,7 +1578,7 @@ def getPlatform(platform, osname):
             if status_data[0][0] == "active":
                 with open("/var/DB/feeds/platform/%s_%s.json" % (platform, osname), "r") as f:
                     jsonData = json.load(f)
-
+                    
                 return jsonify(jsonData)
             else:
                 res = {}
