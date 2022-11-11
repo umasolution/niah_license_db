@@ -594,499 +594,6 @@ def feedUpdate():
                 res['message'] = "Licence is not found, please check"
                 return jsonify(res)
 
-# API to get vulnerabilities details for specified filters.
-@app.route('/api/vuln/list', methods=["GET"])
-#@jwt_required
-def getdata():
-    print("1 - %s" % request.args)
-    if 'email_id' in request.args and 'code' in request.args:
-        email_id = request.args.get('email_id')
-        code = request.args.get('code')
-    else:
-        res = {}
-        res['error'] = 1
-        return jsonify(res)
-
-    query = "select status from license_master_db where code='%s' and emailid='%s'" % (code, email_id)
-    print(query)
-    g.cursor.execute(query)
-    status_data = g.cursor.fetchall()
-    
-    if len(status_data) > 0:
-        if status_data[0][0] == "active":
-            if request.args.get('type'):
-                type = request.args.get('type')
-            else:
-                type = ''
-            if request.args.get('product'):
-                application = request.args.get('product')
-            else:
-                application = ''
-            if request.args.get('productname'):
-                product = request.args.get('productname')
-            else:
-                product = ''
-            if request.args.get('vendorname'):
-                vendor = request.args.get('vendorname')
-            else:
-                vendor = ''
-            if request.args.get('severity'):
-                severity = request.args.get('severity')
-                severity = severity.upper()
-            else:
-                severity = ''
-            if request.args.get('attackVector'):
-                attackvector = request.args.get('attackVector')
-                attackvector = attackvector.upper()
-            else:
-                attackvector = ''
-            if request.args.get('cwe_text'):
-                cwe_text = request.args.get('cwe_text')
-                cwe_text = cwe_text.upper()
-            else:
-                cwe_text = ''
-            if request.args.get('basescore'):
-                basescore = request.args.get('basescore')
-            else:
-                basescore = ''
-
-            if request.args.get('offset'):
-                pageoffset = request.args.get('offset')
-                if request.args.get('limit'):
-                    rowlimit = request.args.get('limit')
-                else:
-                    rowlimit = 50
-            else:
-                pageoffset = 0
-                rowlimit = 50
-                
-            rowlimit = int(pageoffset) + int(rowlimit)
-
-            results = {}
-
-            if type == "plugin":
-                results['results'] = []
-                results['columns'] = []
-
-                rescol = {}
-                rescol['title'] = "Vulnerability"
-                rescol['field'] = "vulnerability"
-                results['columns'].append(rescol)
-
-                rescol = {}
-                rescol['title'] = "CWEID"
-                rescol['field'] = "cwe_text"
-                results['columns'].append(rescol)
-
-                rescol = {}
-                rescol['title'] = "Severity"
-                rescol['field'] = "baseseverity"
-                results['columns'].append(rescol)
-
-                rescol = {}
-                rescol['title'] = "baseScore"
-                rescol['field'] = "basescore"
-                results['columns'].append(rescol)
-
-                rescol = {}
-                rescol['title'] = "Attack Vector"
-                rescol['field'] = "attackvector"
-                results['columns'].append(rescol)
-
-                rescol = {}
-                rescol['title'] = "PublishDate"
-                rescol['field'] = "publishedDate"
-                results['columns'].append(rescol)
-
-                rescol = {}
-                rescol['title'] = "Application"
-                rescol['field'] = "application"
-                results['columns'].append(rescol)
-
-                with open("/var/DB/feeds/plugins/plugins.json", "r") as f:
-                    jsonData = json.load(f)
-
-                jsonData = jsonData['data']
-
-                if application:
-                    jsonData = list(filter(lambda x: (x['application'] == application), jsonData))
-                if severity:
-                    jsonData = list(filter(lambda x: (x['baseseverity3'] == severity), jsonData))
-                    jsonData = list(filter(lambda x: (x['baseseverity2'] == severity), jsonData))
-                if attackvector:
-                    jsonData = list(filter(lambda x: (x['attackvector3'] == attackvector), jsonData))
-                    jsonData = list(filter(lambda x: (x['attackvector2'] == attackvector), jsonData))
-                if cwe_text:
-                    jsonData = list(filter(lambda x: (x['cwe_text'] == cwe_text), jsonData))
-                if basescore:
-                    jsonData = list(filter(lambda x: (x['basescore3'] == basescore), jsonData))
-                    jsonData = list(filter(lambda x: (x['basescore2'] == basescore), jsonData))
-
-                results['total'] = len(jsonData)
-                results['rowlimit'] = rowlimit
-                results['results'] = jsonData[int(pageoffset):int(rowlimit)]
-
-            elif type == "platform":
-                results['results'] = []
-                results['columns'] = []
-
-                rescol = {}
-                rescol['title'] = "Vulnerability"
-                rescol['field'] = "vulnerability"
-                results['columns'].append(rescol)
-
-                rescol = {}
-                rescol['title'] = "Platform"
-                rescol['field'] = "linux"
-                results['columns'].append(rescol)
-
-                rescol = {}
-                rescol['title'] = "Publish Date"
-                rescol['field'] = "publishedDate"
-                results['columns'].append(rescol)
-
-                rescol = {}
-                rescol['title'] = "Severity"
-                rescol['field'] = "baseseverity"
-                results['columns'].append(rescol)
-
-                rescol = {}
-                rescol['title'] = "CWEID"
-                rescol['field'] = "cwe_text"
-                results['columns'].append(rescol)
-
-                rescol = {}
-                rescol['title'] = "baseScore"
-                rescol['field'] = "basescore"
-                results['columns'].append(rescol)
-
-                rescol = {}
-                rescol['title'] = "AttackVector"
-                rescol['field'] = "attackvector"
-                results['columns'].append(rescol)
-
-                with open("/var/DB/feeds/platforms/platform.json", "r") as f:
-                    jsonData = json.load(f)
-
-                jsonData = jsonData['data']
-
-                if application:
-                    jsonData = list(filter(lambda x: (application in x['linux']), jsonData))
-                if severity:
-                    jsonData = list(filter(lambda x: (x['baseseverity3'] == severity), jsonData))
-                    jsonData = list(filter(lambda x: (x['baseseverity2'] == severity), jsonData))
-                if attackvector:
-                    jsonData = list(filter(lambda x: (x['attackvector3'] == attackvector), jsonData))
-                    jsonData = list(filter(lambda x: (x['attackvector2'] == attackvector), jsonData))
-                if cwe_text:
-                    jsonData = list(filter(lambda x: (x['cwe_text'] == cwe_text), jsonData))
-                if basescore:
-                    jsonData = list(filter(lambda x: (x['basescore3'] == basescore), jsonData))
-                    jsonData = list(filter(lambda x: (x['basescore2'] == basescore), jsonData))
-
-                results ['total'] = len(jsonData)
-                results['rowlimit'] = rowlimit
-                results['results'] = jsonData[int(pageoffset):int(rowlimit)]
-
-            elif type == "language":
-                results['results'] = []
-                results['columns'] = []
-
-                rescol = {}
-                rescol['title'] = "Vulnerability"
-                rescol['field'] = "vulnerability"
-                results['columns'].append(rescol)
-
-                rescol = {}
-                rescol['title'] = "CWEID"
-                rescol['field'] = "cwe_text"
-                results['columns'].append(rescol)
-
-                rescol = {}
-                rescol['title'] = "Severity"
-                rescol['field'] = "baseseverity"
-                results['columns'].append(rescol)
-
-                rescol = {}
-                rescol['title'] = "baseScore"
-                rescol['field'] = "basescore"
-                results['columns'].append(rescol)
-
-                rescol = {}
-                rescol['title'] = "Attack Vector"
-                rescol['field'] = "attackvector"
-                results['columns'].append(rescol)
-
-                rescol = {}
-                rescol['title'] = "PublishDate"
-                rescol['field'] = "publishedDate"
-                results['columns'].append(rescol)
-
-                rescol = {}
-                rescol['title'] = "Application"
-                rescol['field'] = "application"
-                results['columns'].append(rescol)
-
-                with open("/var/DB/feeds/language/languages.json", "r") as f:
-                    jsonData = json.load(f)
-
-                jsonData = jsonData['data']
-
-                if application:
-                    jsonData = list(filter(lambda x: (x['application'] == application), jsonData))
-                if severity:
-                    jsonData = list(filter(lambda x: (x['baseseverity3'] == severity), jsonData))
-                    jsonData = list(filter(lambda x: (x['baseseverity2'] == severity), jsonData))
-                if attackvector:
-                    jsonData = list(filter(lambda x: (x['attackvector3'] == attackvector), jsonData))
-                    jsonData = list(filter(lambda x: (x['attackvector2'] == attackvector), jsonData))
-                if cwe_text:
-                    jsonData = list(filter(lambda x: (x['cwe_text'] == cwe_text), jsonData))
-                if basescore:
-                    jsonData = list(filter(lambda x: (x['basescore3'] == basescore), jsonData))
-                    jsonData = list(filter(lambda x: (x['basescore2'] == basescore), jsonData))
-
-                results['total'] = len(jsonData)
-                results['rowlimit'] = rowlimit	
-                results['results'] = jsonData[int(pageoffset):int(rowlimit)]
-            else:
-                results['columns'] = []
-
-                resCol = {}
-                resCol['title'] = "Vulnerability"
-                resCol['field'] = "vulnerability"
-                results['columns'].append(resCol)
-
-                rescol = {}
-                rescol['title'] = "baseScore(v2/v3)"
-                rescol['field'] = "baseScore"
-                results['columns'].append(rescol)
-
-                resCol = {}
-                resCol['title'] = "AccessVector(v2/v3)"
-                resCol['field'] = "accessvector"
-                results['columns'].append(resCol)
-
-                resCol = {}
-                resCol['title'] = "Severity(v2/v3)"
-                resCol['field'] = "severity"
-                results['columns'].append(resCol)
-
-                resCol = {}
-                resCol['title'] = "CWE"
-                resCol['field'] = "cwe"
-                results['columns'].append(resCol)
-
-                resCol = {}
-                resCol['title'] = "LastModified"
-                resCol['field'] = "lastModifiedDate"
-                results['columns'].append(resCol)
-
-                f = open("/var/DB/feeds/nvd/vuln_feed.json", "r")
-                jsonCVEsData = json.load(f)
-                jsonData = jsonCVEsData
-
-                results['total'] = len(jsonData)
-                results['rowlimit'] = rowlimit
-
-                if severity:
-                    jsonData = list(filter(lambda x: (x['baseSeverityv3'] == severity), jsonData))
-                    jsonData = list(filter(lambda x: (x['baseSeverityv2'] == severity), jsonData))
-                if attackvector:
-                    jsonData = list(filter(lambda x: (x['attackVectorv3'] == attackvector), jsonData))
-                    jsonData = list(filter(lambda x: (x['attackVectorv2'] == attackvector), jsonData))
-                if cwe_text:
-                    jsonData = list(filter(lambda x: (x['cwe_text'] == cwe_text), jsonData))
-                if basescore:
-                    jsonData = list(filter(lambda x: (x['baseScorev3'] == basescore), jsonData))
-                    jsonData = list(filter(lambda x: (x['baseScorev2'] == basescore), jsonData))
-
-                results['results'] = jsonData[int(pageoffset):int(rowlimit)]
-
-            return jsonify(results)
-        else:
-            res = {}
-            res['error'] = 2
-            return jsonify(res)
-    else:
-        res = {}
-        res['error'] = 3
-        return jsonify(res)
-
-
-# API to get vulnerabilities details for specified filters.
-@app.route('/api/v1/vuln/list', methods=["GET"])
-#@jwt_required
-def getv1data():
-    if 'email_id' in request.args and 'code' in request.args:
-        email_id = request.args.get('type')
-        code = request.args.get('code')
-    else:
-        res = {}
-        res['error'] = 1
-        return jsonify(res)
-
-    query = "select status from license_master_db where code='%s' and emailid='%s'" % (code, email_id)
-    print(query)
-    g.cursor.execute(query)
-    status_data = g.cursor.fetchall()
-    
-    if len(status_data) > 0:
-        if status_data[0][0] == "active":
-            if request.args.get('type'):
-                type = request.args.get('type')
-            else:
-                type = ''
-            if request.args.get('product'):
-                application = request.args.get('product')
-            else:
-                application = ''
-            if request.args.get('productname'):
-                product = request.args.get('productname')
-            else:
-                product = ''
-            if request.args.get('vendorname'):
-                vendor = request.args.get('vendorname')
-            else:
-                vendor = ''
-            if request.args.get('severity'):
-                severity = request.args.get('severity')
-                severity = severity.upper()
-            else:
-                severity = ''
-            if request.args.get('attackVector'):
-                attackvector = request.args.get('attackVector')
-                attackvector = attackvector.upper()
-            else:
-                attackvector = ''
-            if request.args.get('cwe_text'):
-                cwe_text = request.args.get('cwe_text')
-                cwe_text = cwe_text.upper()
-            else:
-                cwe_text = ''
-            if request.args.get('basescore'):
-                basescore = request.args.get('basescore')
-            else:
-                basescore = ''
-
-            if request.args.get('offset'):
-                pageoffset = request.args.get('offset')
-                if request.args.get('limit'):
-                    rowlimit = request.args.get('limit')
-                else:
-                    rowlimit = 50
-            else:
-                pageoffset = 0
-                rowlimit = 50
-                
-            rowlimit = int(pageoffset) + int(rowlimit)
-
-            results = {}
-            results['results'] = []
-
-            if type == "plugin":
-                with open("/var/DB/feeds/plugins/plugins.json", "r") as f:
-                    jsonData = json.load(f)
-
-                jsonData = jsonData['data']
-
-                if application:
-                    jsonData = list(filter(lambda x: (x['application'] == application), jsonData))
-                if severity:
-                    jsonData = list(filter(lambda x: (x['baseseverity3'] == severity), jsonData))
-                    jsonData = list(filter(lambda x: (x['baseseverity2'] == severity), jsonData))
-                if attackvector:
-                    jsonData = list(filter(lambda x: (x['attackvector3'] == attackvector), jsonData))
-                    jsonData = list(filter(lambda x: (x['attackvector2'] == attackvector), jsonData))
-                if cwe_text:
-                    jsonData = list(filter(lambda x: (x['cwe_text'] == cwe_text), jsonData))
-                if basescore:
-                    jsonData = list(filter(lambda x: (x['basescore3'] == basescore), jsonData))
-                    jsonData = list(filter(lambda x: (x['basescore2'] == basescore), jsonData))
-
-                results['total'] = len(jsonData)
-                results['rowlimit'] = rowlimit
-                results['results'] = jsonData[int(pageoffset):int(rowlimit)]
-            elif type == "platform":
-                with open("/var/DB/feeds/platforms/platform.json", "r") as f:
-                    jsonData = json.load(f)
-
-                jsonData = jsonData['data']
-
-                if application:
-                    jsonData = list(filter(lambda x: (application in x['linux']), jsonData))
-                if severity:
-                    jsonData = list(filter(lambda x: (x['baseseverity3'] == severity), jsonData))
-                    jsonData = list(filter(lambda x: (x['baseseverity2'] == severity), jsonData))
-                if attackvector:
-                    jsonData = list(filter(lambda x: (x['attackvector3'] == attackvector), jsonData))
-                    jsonData = list(filter(lambda x: (x['attackvector2'] == attackvector), jsonData))
-                if cwe_text:
-                    jsonData = list(filter(lambda x: (x['cwe_text'] == cwe_text), jsonData))
-                if basescore:
-                    jsonData = list(filter(lambda x: (x['basescore3'] == basescore), jsonData))
-                    jsonData = list(filter(lambda x: (x['basescore2'] == basescore), jsonData))
-
-                results['total'] = len(jsonData)
-                results['rowlimit'] = rowlimit
-                results['results'] = jsonData[int(pageoffset):int(rowlimit)]
-
-            elif type == "language":
-                with open("/var/DB/feeds/language/languages.json", "r") as f:
-                    jsonData = json.load(f)
-
-                jsonData = jsonData['data']
-
-                if application:
-                    jsonData = list(filter(lambda x: (x['application'] == application), jsonData))
-                if severity:
-                    jsonData = list(filter(lambda x: (x['baseseverity3'] == severity), jsonData))
-                    jsonData = list(filter(lambda x: (x['baseseverity2'] == severity), jsonData))
-                if attackvector:
-                    jsonData = list(filter(lambda x: (x['attackvector3'] == attackvector), jsonData))
-                    jsonData = list(filter(lambda x: (x['attackvector2'] == attackvector), jsonData))
-                if cwe_text:
-                    jsonData = list(filter(lambda x: (x['cwe_text'] == cwe_text), jsonData))
-                if basescore:
-                    jsonData = list(filter(lambda x: (x['basescore3'] == basescore), jsonData))
-                    jsonData = list(filter(lambda x: (x['basescore2'] == basescore), jsonData))
-
-                results['total'] = len(jsonData)
-                results['rowlimit'] = rowlimit	
-                results['results'] = jsonData[int(pageoffset):int(rowlimit)]
-            else:
-                f = open("/var/DB/feeds/nvd/vuln_feed.json", "r")
-                jsonCVEsData = json.load(f)
-                jsonData = jsonCVEsData
-
-                results['total'] = len(jsonData)
-                results['rowlimit'] = rowlimit
-
-                if severity:
-                    jsonData = list(filter(lambda x: (x['baseSeverityv3'] == severity), jsonData))
-                    jsonData = list(filter(lambda x: (x['baseSeverityv2'] == severity), jsonData))
-                if attackvector:
-                    jsonData = list(filter(lambda x: (x['attackVectorv3'] == attackvector), jsonData))
-                    jsonData = list(filter(lambda x: (x['attackVectorv2'] == attackvector), jsonData))
-                if cwe_text:
-                    jsonData = list(filter(lambda x: (x['cwe_text'] == cwe_text), jsonData))
-                if basescore:
-                    jsonData = list(filter(lambda x: (x['baseScorev3'] == basescore), jsonData))
-                    jsonData = list(filter(lambda x: (x['baseScorev2'] == basescore), jsonData))
-
-                results['results'] = jsonData[int(pageoffset):int(rowlimit)]
-
-            return jsonify(results)
-        else:
-            res = {}
-            res['error'] = 2
-            return jsonify(res)
-    else:
-        res = {}
-        res['error'] = 3
-        return jsonify(res)
-
-
 # API to get Browse tab data in vulnerability DB page.
 @app.route('/api/dash/browse', methods = ['GET'])
 #@jwt_required
@@ -1131,7 +638,92 @@ def getdashBrowse():
         results['data'] .append(res)
 
         return jsonify(results)
-   
+
+# API to get vulnerabilities details for specified filters.
+@app.route('/api/vuln/list', methods=["GET"])
+#@jwt_required
+def getdata():
+    print("1 - %s" % request.args)
+    if 'email_id' in request.args and 'code' in request.args:
+        email_id = request.args.get('email_id')
+        code = request.args.get('code')
+    else:
+        res = {}
+        res['error'] = 1
+        return jsonify(res)
+
+    query = "select status from license_master_db where code='%s' and emailid='%s'" % (code, email_id)
+    print(query)
+    g.cursor.execute(query)
+    status_data = g.cursor.fetchall()
+    
+    if len(status_data) > 0:
+        if status_data[0][0] == "active":
+            if request.args.get('offset'):
+                pageoffset = request.args.get('offset')
+                if request.args.get('limit'):
+                    rowlimit = request.args.get('limit')
+                else:
+                    rowlimit = 50
+            else:
+                pageoffset = 0
+                rowlimit = 50
+                
+            rowlimit = int(pageoffset) + int(rowlimit)
+
+            results = {}
+
+            results['columns'] = []
+
+            resCol = {}
+            resCol['title'] = "Vulnerability"
+            resCol['field'] = "vulnerability"
+            results['columns'].append(resCol)
+
+            rescol = {}
+            rescol['title'] = "baseScore(v2/v3)"
+            rescol['field'] = "baseScore"
+            results['columns'].append(rescol)
+
+            resCol = {}
+            resCol['title'] = "AccessVector(v2/v3)"
+            resCol['field'] = "accessvector"
+            results['columns'].append(resCol)
+
+            resCol = {}
+            resCol['title'] = "Severity(v2/v3)"
+            resCol['field'] = "severity"
+            results['columns'].append(resCol)
+
+            resCol = {}
+            resCol['title'] = "CWE"
+            resCol['field'] = "cwe"
+            results['columns'].append(resCol)
+
+            resCol = {}
+            resCol['title'] = "LastModified"
+            resCol['field'] = "lastModifiedDate"
+            results['columns'].append(resCol)
+
+            f = open("/var/DB/feeds/nvd/vuln_feed.json", "r")
+            jsonCVEsData = json.load(f)
+            jsonData = jsonCVEsData
+
+            results['total'] = len(jsonData)
+            results['rowlimit'] = rowlimit
+
+            results['results'] = jsonData[int(pageoffset):int(rowlimit)]
+
+            return jsonify(results)
+        else:
+            res = {}
+            res['error'] = 2
+            return jsonify(res)
+    else:
+        res = {}
+        res['error'] = 3
+        return jsonify(res)
+
 # APi to get home data in vulnerability DB page.
 @app.route('/api/scan/home', methods = ['GET'])
 def getHome():
@@ -1233,10 +825,11 @@ def getHome():
                 jsonData = list(filter(lambda x: ('plugin' in x), jsonData))
                 jsonData = list(filter(lambda x: (plugin in x['plugin']), jsonData))
 
-        if request.args.get('local'):
+        if request.args.get('local') and request.args.get('remote'):
+            jsonData = list(filter(lambda x: ('LOCAL' in x['accessvector'] or 'NETWORK' in x['accessvector']), jsonData))
+        elif request.args.get('local'):
             jsonData = list(filter(lambda x: ('LOCAL' in x['accessvector']), jsonData))
-
-        if request.args.get('remote'):
+        elif request.args.get('remote'):
             jsonData = list(filter(lambda x: ('NETWORK' in x['accessvector']), jsonData))
 
         if request.args.get('severity'):
@@ -1601,6 +1194,59 @@ def getnpm_javascript_mvers(product, version):
 
         return ' '.join(versions)
 
+
+@app.route('/api/license/platform/<os_name>/<platform>', methods = ['POST', 'GET'])
+#@jwt_required
+def getOSLicense(os_name, platform):
+    if request.method == 'POST':
+        req_data = request.get_json()
+
+        if 'email_id' in req_data and 'code' in req_data:
+            email_id = req_data['email_id']
+            code = req_data['code']
+        else:
+            res = {}
+            res['error'] = 1
+            return jsonify(res)
+    
+        query = "select status from license_master_db where code='%s' and emailid='%s'" % (code, email_id)
+        print(query)
+        g.cursor.execute(query)
+        status_data = g.cursor.fetchall()
+        
+        license_db = {}
+
+        if len(status_data) > 0:
+            if status_data[0][0] == "active": 
+                if os_name == "ubuntu":               
+                    with open("/var/DB/feeds/packages/ubuntu_license.json", "r") as f:
+                        license_db_os = json.load(f)
+                    
+                    if platform in license_db_os['data']:
+                        license_db_1 = license_db_os['data'][platform]
+
+                    if "%s-updates" % platform in license_db_os['data']:
+                        license_db_2 = license_db_os['data'][platform]
+
+                    license_db = {**license_db_1, **license_db_2}
+                
+                elif os_name == "debian":               
+                    with open("/var/DB/feeds/packages/debian_license.json", "r") as f:
+                        license_db_os = json.load(f)
+                    
+                    if platform in license_db_os['data']:
+                        license_db_1 = license_db_os['data'][platform]
+
+                    if "%s-backports" % platform in license_db_os['data']:
+                        license_db_2 = license_db_os['data'][platform]
+
+                    license_db = {**license_db_1, **license_db_2}
+                else:
+                    license_db = {}
+
+        return jsonify(license_db) 
+
+
 @app.route('/api/license/language/<application>', methods = ['POST', 'GET'])
 #@jwt_required
 def getLicense(application):
@@ -1680,55 +1326,11 @@ def getLanguage(application):
 
                     if len(jsonData) > 0:
                         for d in jsonData:
-                            resRet = {}
-                            resRet['cve_id'] = d['cve_id']
-                            resRet['vuln_name'] = d['vuln_name']
-                            resRet['product'] = d['product']
-                            resRet['vendor'] = d['vendor']
-
                             if application == "javascript":
-                                resRet['available_versions'] = getnpm_javascript_mvers(d['product'], d['version'])
+                                d['available_versions'] = getnpm_javascript_mvers(d['product'], d['version'])
                             else:
-                                resRet['available_versions'] = ''
-
-                            resRet['versions'] = d['version']
-
-                            resRet['severityV2'] = d['severityV2']
-                            resRet['severityV3'] = d['severityV3']
-                            if d['severityV3']:
-                                resRet['severity'] = d['severityV3']
-                            else:
-                                resRet['severity'] = d['severityV2']
-                            resRet['vectorstringV2'] = d['vectorStringV2']
-                            resRet['vectorstringV3'] = d['vectorStringV3']
-                            if d['vectorStringV3']:
-                                resRet['vectorstring'] = d['vectorStringV3']
-                            else:
-                                resRet['vectorstring'] = d['vectorStringV2']
-                            resRet['basescoreV2'] = d['baseScoreV2']
-                            resRet['basescoreV3'] = d['baseScoreV3']
-                            if d['baseScoreV3']:
-                                resRet['basescore'] = d['baseScoreV3']
-                            else:
-                                resRet['basescore'] = d['baseScoreV2']
-                            resRet['pub_date'] = d['publishedDate']
-                            resRet['reference'] = d['reference']
-                            resRet['description'] = d['description']
-                            resRet['patch'] = d['patch']
-                            resRet['cwe_text'] = d['cwe']
-                            resRet['cwe_id'] = d['cwe_text']
-                            if 'groupid' in d:
-                                resRet['groupid'] = d['groupid']
-                            if 'artifactid' in d:
-                                resRet['artifactid'] = d['artifactid']
-                            if 'packagename' in d:
-                                resRet['packagename'] = d['packagename']
-                            resRet['exploits'] = d['exploits']
-
-                            resRet['accessvectorV2'] = d['accessvectorV2']
-                            resRet['accessvectorV3'] = d['accessvectorV3']
-                            resRet['accessvector'] = d['accessvector']
-                            res['results'].append(resRet)
+                                d['available_versions'] = ''
+                            res['results'].append(d)
             else:
                 res = {}
                 res['error'] = 2
@@ -1788,38 +1390,7 @@ def getVendorLanguage(application):
                             res['results'][product] = []
 
                         for d in jsonData:
-                            resRet = {}
-                            resRet['cve_id'] = d['cve_id']
-                            resRet['product'] = product
-                            resRet['vendor'] = vendor
-                            resRet['versions'] = d['version']
-
-                            resRet['severityV2'] = d['severityV2']
-                            resRet['severityV3'] = d['severityV3']
-                            resRet['severity'] = d['severity']
-
-                            resRet['vectorstringV2'] = d['vectorStringV2']
-                            resRet['vectorstringV3'] = d['vectorStringV3']
-                            resRet['vectorstring'] = d['vectorString']
-                            resRet['basescoreV2'] = d['baseScoreV2']
-                            resRet['basescoreV3'] = d['baseScoreV3']
-                            resRet['basescore'] = d['baseScore']
-                            resRet['pub_date'] = d['publishedDate']
-                            resRet['reference'] = d['reference']
-                            resRet['description'] = d['description']
-                            resRet['patch'] = d['patch']
-                            resRet['cwe_text'] = d['cwe']
-                            resRet['cwe_id'] = d['cwe_text']
-                            if 'groupid' in d:
-                                resRet['groupid'] = d['groupid']
-                            if 'artifactid' in d:
-                                resRet['artifactid'] = d['artifactid']
-                            resRet['exploits'] = d['exploits']
-
-                            resRet['accessvectorV2'] = d['accessvectorV2']
-                            resRet['accessvectorV3'] = d['accessvectorV3']
-                            resRet['accessvector'] = d['accessvector']
-                            res['results'][product].append(resRet)
+                            res['results'][product].append(d)
             else:
                 res = {}
                 res['error'] = 2
@@ -1866,46 +1437,7 @@ def getProductVersionPlugin(application):
                             res['results'][product] = []
 
                         for d in jsonData:
-                            resRet = {}
-                            resRet['product'] = d['product']
-                            resRet['vulnName'] = d['vulnerability']
-                            resRet['cve_id' ] = d['cve_id']
-                            resRet['publish_date'] = d['publishedDate']
-                            resRet['versions'] = d['versions']
-                            resRet['reference'] = d['reference']
-                            resRet['description'] = d['description']
-                            resRet['cwe_text'] = d['cwe_text']
-                            resRet['exploits'] = d['exploits']
-                            resRet['patch'] = d['patch']
-
-                            if d['baseseverity2']:
-                                resRet['severity'] = d['baseseverity2']
-                            elif d['baseseverity3']:
-                                resRet['severity'] = d['baseseverity2']
-                            else:
-                                resRet['severity'] = 'UNKNOWN'
-
-                            if d['vectorstring2']:
-                                resRet['vectorString'] = d['vectorstring2']
-                            elif d['vectorstring3']:
-                                resRet['vectorString'] = d['vectorstring3']
-                            else:
-                                resRet['vectorString'] = 'UNKNOWN'
-                            
-                            if 	d['basescore2']:	
-                                resRet['baseScore'] = d['basescore2']
-                            elif d['basescore3']:
-                                resRet['baseScore'] = d['basescore3']
-                            else:
-                                resRet['baseScore'] = 'UNKNOWN'
-
-                            if d['attackvector2']:
-                                resRet['attackVector'] = d['attackvector2']
-                            elif d['attackvector3']:
-                                resRet['attackVector'] = d['attackvector3']
-                            else:
-                                resRet['attackVector'] = 'UNKNOWN'
-                            res['results'][product].append(resRet)
+                            res['results'][product].append(d)
 
                 return res
             else:
@@ -1957,63 +1489,8 @@ def getappdb():
                 
                     if len(jsonData) > 0:
                         for row in jsonData:
-                            res = {}
-                            product = row['product']
-                            vendor = row['vendor']
-                            cve_id = row['cve_id']
-                            versions = row['versions']
-                            patch = row['patch']
-                            publishedDate = row['publishedDate']
-                            attackvector = row['attackvector']
-                            vectorstring = row['vectorstring']
-                            basescore = row['basescore']
-                            baseseverity = row['baseseverity']
-                            cwe_text = row['cwe_text']
-                            reference = row['reference']
-                            vulnerability = row['vulnerability']
-                            exploits = row['exploits']
-
-                            res['product'] = product
-                            res['vendor'] = vendor
-                            res['cve_id'] = cve_id
-                            res['versions'] = versions
-                            res['patch'] = patch
-                            res['publish_date'] = publishedDate
-                            res['vuln_name'] = vulnerability
-                            res['cwe_text'] = cwe_text
-                            res['reference'] = reference
-                            res['exploits'] = exploits
-
-                            if row['baseseverity2']:
-                                res['severity'] = row['baseseverity2']
-                            elif row['baseseverity3']:
-                                res['severity'] = row['baseseverity2']
-                            else:
-                                res['severity'] = 'UNKNOWN'
-
-                            if row['vectorstring2']:
-                                res['vectorString'] = row['vectorstring2']
-                            elif row['vectorstring3']:
-                                res['vectorString'] = row['vectorstring3']
-                            else:
-                                res['vectorString'] = 'UNKNOWN'
-                            
-                            if row['basescore2']:	
-                                res['baseScore'] = row['basescore2']
-                            elif row['basescore3']:
-                                res['baseScore'] = row['basescore3']
-                            else:
-                                res['baseScore'] = 'UNKNOWN'
-
-                            if row['attackvector2']:
-                                res['attackVector'] = row['attackvector2']
-                            elif row['attackvector3']:
-                                res['attackVector'] = row['attackvector3']
-                            else:
-                                res['attackVector'] = 'UNKNOWN'
-
-                            if res not in results[product]:
-                                results[product].append(res)
+                            if row not in results[product]:
+                                results[product].append(row)
                 return results
             else:
                 res = {}
@@ -2250,17 +1727,8 @@ def cveSearchAuth():
                     resCol['field'] = "application"
                     retRes['application_advisory']['columns'].append(resCol)
                 
+                retRes['alert'] = False
 
-                
-                cmd = "select * from alerttabs where user_id='%s' and alert_type='cve_id' and alert_name='%s'" % (user_id, cve_id)
-                g.cursor.execute(cmd)
-                fetchData = g.cursor.fetchall()
-
-                if len(fetchData) == 0:
-                    retRes['alert'] = False
-                else:
-                    retRes['alert'] = True
-                
                 return jsonify(retRes)
             else:
                 retRes = {}
@@ -2307,16 +1775,8 @@ def cvev1SearchAuth():
                 
                 retRes = results
 
+                retRes['alert'] = False
                 
-                cmd = "select * from alerttabs where user_id='%s' and alert_type='cve_id' and alert_name='%s'" % (user_id, cve_id)
-                g.cursor.execute(cmd)
-                fetchData = g.cursor.fetchall()
-
-                if len(fetchData) == 0:
-                    retRes['alert'] = False
-                else:
-                    retRes['alert'] = True
-
                 return jsonify(retRes)
             else:
                 retRes = {}
@@ -2370,23 +1830,8 @@ def getcmsdb(application):
                     jsonData = list(filter(lambda x: (x['product'] == product), jsonDataArray))
             
                     for aDB in jsonData:
-                        res = {}
-                        res['product'] = aDB['product']
-                        res['vendor'] = aDB['vendor']
-                        res['cve_id'] = aDB['cve_id']
-                        res['vuln_name'] = aDB['vulnerability']
-                        res['versions'] = aDB['versions']
-                        res['patch'] = aDB['patch']
-                        res['baseScore'] = aDB['basescore']
-                        res['vectorString'] = aDB['vectorstring']
-                        res['severity'] = aDB['baseseverity']
-                        res['publish_date'] = aDB['publishedDate']
-                        res['accessvector'] = aDB['attackvector']
-                        res['cwe_text'] = aDB['cwe_text']
-                        res['reference'] = aDB['reference']
-
-                        if res not in results[product]:
-                            results[product].append(res)
+                        if aDB not in results[product]:
+                            results[product].append(aDB)
 
                 return results
             else:
@@ -2513,26 +1958,13 @@ def getDetails():
                 tempSeverity = {}
             
                 for aDB in jsonData:
-                    res = {}
-                    res['vulnerability'] = aDB['vuln_name']
-                    res['publish_date'] = aDB['publishedDate']
-                    res['vectorstring'] = aDB['vectorString']
-                    res['vectorStringV3'] = aDB['vectorStringV3']
-                    res['vectorStringV2'] = aDB['vectorStringV2']
-                    res['accessvectorV3'] = aDB['accessvectorV3']
-                    res['accessvectorV2'] = aDB['accessvectorV2']
-                    res['severity'] = aDB['severity']
-                    res['severityV3'] = aDB['severityV3']
-                    res['severityV2'] = aDB['severityV2']
-                    res['cwe_text'] = aDB['cwe_text']
-                    res['versions'] = aDB['version']
-                    res['patch'] = aDB['patch']
-                    res['attackVector'] = aDB['accessvector']
-                    results['db']['results'].append(res)
+                    results['db']['results'].append(aDB)
                     
                     cwe_text = aDB['cwe_text']
+
                     if cwe_text not in tempCWE:
                         tempCWE[cwe_text] = []
+
                     tempCWE[cwe_text].append(res)
 
                     if aDB['severityV3']:
@@ -2544,6 +1976,7 @@ def getDetails():
 
                     if severity not in tempSeverity:
                         tempSeverity[severity] = []
+                        
                     tempSeverity[severity].append(res)
                     
                 results['chart'] = {}
@@ -2813,6 +2246,14 @@ def cveWiseSearch():
             else:
                 results = {}
             
+            dr_products_info = []
+            dr_vendors_info = []
+            dr_family_info = []
+            dr_language_info = []
+            dr_plugin_info = []
+            dr_platform_info = []
+            dr_microsoft_info = []
+            
             jsonCVEsData = {}
             jsonCVEsData[year] = {}
             jsonCVEsData[year][cve_id] = results
@@ -2829,19 +2270,47 @@ def cveWiseSearch():
                 retRes['snapshot']['publishedDate'] = ''
 
             if 'plugin_advisory' in jsonCVEsData[year][cve_id]:
-                retRes['plugin_advisory'] = jsonCVEsData[year][cve_id]['plugin_advisory']
+                retRes['plugin_advisory'] = jsonCVEsData[year][cve_id]['plugin_advisory']['data']
+                for plgVuln in jsonCVEsData[year][cve_id]['plugin_advisory']['data']:
+                    if plgVuln['product'] not in dr_products_info:
+                        dr_products_info.append(plgVuln['product'])
+                    if plgVuln['vendor'] not in dr_vendors_info:
+                        dr_vendors_info.append(plgVuln['vendor'])
+                    if plgVuln['plugin'] not in dr_plugin_info:
+                        dr_plugin_info.append(plgVuln['plugin'])
 
             if 'application_advisory' in jsonCVEsData[year][cve_id]:
-                retRes['application_advisory'] = jsonCVEsData[year][cve_id]['application_advisory']
+                retRes['application_advisory'] = jsonCVEsData[year][cve_id]['application_advisory']['data']
+                for appVuln in jsonCVEsData[year][cve_id]['application_advisory']['data']:
+                    if appVuln['product'] not in dr_products_info:
+                        dr_products_info.append(appVuln['product'])
+                    if appVuln['vendor'] not in dr_vendors_info:
+                        dr_vendors_info.append(appVuln['vendor'])
 
             if 'library_advisory' in jsonCVEsData[year][cve_id]:
-                retRes['library_advisory'] = jsonCVEsData[year][cve_id]['library_advisory']
+                retRes['library_advisory'] = jsonCVEsData[year][cve_id]['library_advisory']['data']
+                for langVuln in jsonCVEsData[year][cve_id]['library_advisory']['data']:
+                    if langVuln['product'] not in dr_products_info:
+                        dr_products_info.append(langVuln['product'])
+                    if langVuln['language'] not in dr_language_info:
+                        dr_language_info.append(langVuln['language']) 
+                    if langVuln['vendor'] not in dr_vendors_info:
+                        dr_vendors_info.append(langVuln['vendor'])
 
             if 'platform_advisory' in jsonCVEsData[year][cve_id]:
-                retRes['platform_advisory'] = jsonCVEsData[year][cve_id]['platform_advisory']
+                retRes['platform_advisory'] = jsonCVEsData[year][cve_id]['platform_advisory']['data']
+                for plvuln in jsonCVEsData[year][cve_id]['platform_advisory']['data']:
+                    if plvuln['product'] not in dr_products_info:
+                        dr_products_info.append(plvuln['product'])
+                    if plvuln['family'] not in dr_family_info:
+                        dr_family_info.append(plvuln['family'])
+                    if plvuln['platform'] not in dr_platform_info:
+                        dr_platform_info.append(plvuln['platform'])
+                    if plvuln['vendor'] not in dr_vendors_info:
+                        dr_vendors_info.append(plvuln['vendor'])
 
             if 'microsoft_advisory' in jsonCVEsData[year][cve_id]:
-                retRes['microsoft_advisory'] = jsonCVEsData[year][cve_id]['microsoft_advisory']
+                retRes['microsoft_advisory'] = jsonCVEsData[year][cve_id]['microsoft_advisory']['data']
 
             if 'CVSS20' in jsonCVEsData[year][cve_id]:
                 if 'baseScore' in jsonCVEsData[year][cve_id]['CVSS20']:
@@ -2860,31 +2329,35 @@ def cveWiseSearch():
             else:
                 CWEStr = ''
 
-            
             dr_info_json = jsonCVEsData[year][cve_id]['Products']['data']
-
-            dr_products_info = []
-            dr_vendors_info = []
-            dr_family_info = []
-            dr_language_info = []
-            dr_plugin_info = []
-            dr_platform_info = []
-
-
+            
+            for advvuln in dr_info_json:
+                if advvuln['vendor'] == "microsoft":
+                    if advvuln['product'] not in dr_microsoft_info:
+                        dr_microsoft_info.append(advvuln['product'])
+                    if advvuln['vendor'] not in dr_vendors_info:
+                        dr_vendors_info.append(advvuln['vendor'])
+                    
             if len(dr_info_json) > 0:
                 for dr_info in dr_info_json:
                     if 'products' in dr_info:
-                        dr_products_info.append(dr_info['product'])
+                        if dr_info['product'] not in dr_products_info:
+                            dr_products_info.append(dr_info['product'])
                     if 'vendors' in dr_info:
-                        dr_vendors_info.append(dr_info['vendors'])
+                        if dr_info['vendors'] not in dr_vendors_info:
+                            dr_vendors_info.append(dr_info['vendors'])
                     if 'family' in dr_info:
-                        dr_family_info.append(dr_info['family'])
+                        if dr_info['family'] not in dr_family_info:
+                            dr_family_info.append(dr_info['family'])
                     if 'language' in dr_info:
-                        dr_language_info.append(dr_info['language'])
+                        if dr_info['language'] not in dr_language_info:
+                            dr_language_info.append(dr_info['language'])
                     if 'plugin' in dr_info:
-                        dr_plugin_info.append(dr_info['plugin'])
+                        if dr_info['plugin'] not in dr_plugin_info:
+                            dr_plugin_info.append(dr_info['plugin'])
                     if 'platform' in dr_info:
-                        dr_platform_info.append(dr_info['platform'])
+                        if dr_info['platform'] not in dr_platform_info:
+                            dr_platform_info.append(dr_info['platform'])
 
 
             if CWEStr and CWEStr != "None":
