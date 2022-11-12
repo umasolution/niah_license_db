@@ -15,6 +15,7 @@ from flask_httpauth import HTTPTokenAuth
 from datetime import date, timedelta
 from flask import Flask,redirect
 from flask import g
+import gzip
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import string
@@ -1159,7 +1160,7 @@ def getPlatform(platform, osname):
             code = req_data['code']
         else:
             res = {}
-            res['error'] = 1
+            res['error'] = 1    
             return jsonify(res)
     
         query = "select status from license_master_db where code='%s' and emailid='%s'" % (code, email_id)
@@ -1169,10 +1170,15 @@ def getPlatform(platform, osname):
         
         if len(status_data) > 0:
             if status_data[0][0] == "active":
+                compression_level = 9
                 with open("/var/DB/feeds/platform/%s_%s.json" % (platform, osname), "r") as f:
                     jsonData = json.load(f)
-                    
-                return jsonify(jsonData)
+
+                content = gzip.compress(json.dumps(jsonData).encode('utf8'), compression_level)
+                response = make_response(content)
+                response.headers['Content-length'] = len(content)
+                response.headers['Content-Encoding'] = 'gzip'
+                return response
             else:
                 res = {}
                 res['error'] = 2
@@ -1215,6 +1221,8 @@ def getOSLicense(os_name, platform):
         status_data = g.cursor.fetchall()
         
         license_db = {}
+        license_db_1 = ''
+        license_db_2 = ''
 
         if len(status_data) > 0:
             if status_data[0][0] == "active": 
@@ -1228,7 +1236,8 @@ def getOSLicense(os_name, platform):
                     if "%s-updates" % platform in license_db_os['data']:
                         license_db_2 = license_db_os['data'][platform]
 
-                    license_db = {**license_db_1, **license_db_2}
+                    if license_db_1 or license_db_2:
+                        license_db = {**license_db_1, **license_db_2}
                 
                 elif os_name == "debian":               
                     with open("/var/DB/feeds/packages/debian_license.json", "r") as f:
@@ -1240,7 +1249,8 @@ def getOSLicense(os_name, platform):
                     if "%s-backports" % platform in license_db_os['data']:
                         license_db_2 = license_db_os['data'][platform]
 
-                    license_db = {**license_db_1, **license_db_2}
+                    if license_db_1 or license_db_2:
+                        license_db = {**license_db_1, **license_db_2}
                 else:
                     license_db = {}
 
